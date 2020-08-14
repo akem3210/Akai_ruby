@@ -1,0 +1,34 @@
+-------------------------------------------------------
+Samples - Slicer/randomiser
+Drumkits - Loops... (bank switch change drumkit)
+Pads - Stretch...
+Bits(oldschool noise) - Loops/random
+Mp3 player - Play speed
+Radio frequencies
+Acid (loops)
+
+TODO: Change current sample pitch etc when sample is playing
+
+-------------------------------------------------------
+Get a drumkit samples directory,
+	generate a line of thoses samples randomly picked
+	and also choose part of the samples to play/stop
+	for 5 seconds for ex. Use the seed to get them back.
+	
+	We can imagine a second pass to repeat/stutter part
+	of this samples line with distortions or whatever...
+	(of course it can also be other samples than drumkits)
+
+Realtime sample time stretch and FX
+	Able to apply realtime modifications to samples
+	instead of what we have now, we can set effect parameters
+	using knobx then play a sample, instead we should slow
+	or speed up sample play for ex in realtime while it is played
+	and for that we most likely need a C/C++ player including FXs,
+	that we can connect to in TCP mode for example to
+	redefine sample play parameters on the fly.
+	And that's about it. Maybe we can hack the sox/play binary
+	since it open source and already support what we want,
+	but only in preprocessed way...gotta have a look.
+
+SAMPLE LOOP SLICING
