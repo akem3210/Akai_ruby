@@ -1,6 +1,5 @@
 # RUN "RESET" AFTER RUNNING THIS SCRIPT TO GET BACK TERMINAL INPUT(PROBLEM ISSUE WITH TERMINAL CONTROL CHARACTERS IN THREADS LOCKING IT UP)
 
-# TODO ADD PITCH IN PLACE OF ONE FADER OF THE REVERB!!!
 =begin
 
 16 20 24 28 46 50 54 58 | XX
@@ -215,8 +214,8 @@ def init()
 	
 	###########################################################	
 	$mode_list = [ "Samples",
+		       "SynthPads",
 		       "Drumkits",
-		       "Pads",
 		       "8Bits",
 		       "MP3",
 		       "Radio",
@@ -239,33 +238,262 @@ def init()
 	$sample_reverb = [ false, 99, 99, 100, 100, 0, 0, ] # active, reverb, HF-damping, room-scale, stereo-depth, pre-delay, wet-gain
 	$sample_overdrive = [ false, 10, 10 ] # active, [gain(20) [colour(20)]]
 
+
+
+
+###################################################>>>>
+# play random sample loop and slicer
+	$full_sample_filelist = File.open("Samples_full.txt").readlines
+	0.upto($full_sample_filelist.size - 1){|i| $full_sample_filelist[i] = $full_sample_filelist[i].chomp }
+	puts "Loaded #{$full_sample_filelist.size} samples (fullset)."
+# play random sample loop and slicer
+###################################################<<<<
+
+
+	$synthpads_samples_filelist = File.open("Samples_synthpads.txt").readlines
+	0.upto($synthpads_samples_filelist.size - 1){|i| $synthpads_samples_filelist[i] = $synthpads_samples_filelist[i].chomp }
+	$synthpads_current = 0 # current sample
+	$synthpads_steps = 50 # tone steps between buttons, like notes on a keyboard...
+	puts "Loaded #{$synthpads_samples_filelist.size} samples (SynthPads)."
+
 	puts "init().ok."
 end
+
+###################################################>>>>
+# play random sample loop and slicer
+def play_random_clip()
+  0.upto(8){
+	id = rand($full_sample_filelist.size)
+=begin	
+	# Theses variables are used by the sample playing - affected to the last line of knobs
+	$sample_volume = 1.0
+	$sample_speed = 1.0
+	$sample_reverse = false
+	$sample_sampling_rate = 44100
+	$sample_start_pos = 0.0
+	$sample_phaser = [ false, 0.95, 0.95, 3, 0.6, 2, "-t" ] # active gain-in gain-out delay decay speed [-s(inusoid)|-t(riangle)]
+	$sample_flanger = [ false, 3, 9.5, 0, 70, 2, "sin", 100, "quadratic" ] # [active, delay depth regen width speed shape phase interp]
+	$sample_reverb = [ false, 99, 99, 100, 100, 0, 0, ] # active, reverb, HF-damping, room-scale, stereo-depth, pre-delay, wet-gain
+=end
+	cmd = "play -v #{$sample_volume} \"#{$full_sample_filelist[id]}\" "
+	cmd += "rate #{$sample_sampling_rate} "
+	cmd += "speed #{$sample_speed} "
+	cmd += "#{$sample_reverse == true ? "reverse" : ""} "
+	cmd += "trim =0.0 "
+	
+	cmd += $sample_phaser[0] == true ? "phaser #{$sample_phaser[1].round(2)} #{$sample_phaser[2].round(2)} #{$sample_phaser[3].round(2)} #{$sample_phaser[4].round(2)} #{$sample_phaser[5].round(2)} #{$sample_phaser[6]} " : ""
+	cmd += $sample_flanger[0] == true ? "flanger #{$sample_flanger[1].round(2)} #{$sample_flanger[2].round(2)} #{$sample_flanger[3].round(2)} #{$sample_flanger[4].round(2)} #{$sample_flanger[5].round(2)} #{$sample_flanger[6]} #{$sample_flanger[7].round(2)} #{$sample_flanger[8]} " : ""
+	cmd += $sample_reverb[0] == true ? "reverb #{$sample_reverb[1].round(2)} #{$sample_reverb[2].round(2)} #{$sample_reverb[3].round(2)} #{$sample_reverb[4].round(2)} #{$sample_reverb[5].round(2)} #{$sample_reverb[6].round(2)} " : ""
+	
+	cmd += " > /dev/null 2>&1" #[ false, 3, 9.5, 0, 70, 2, "sin", 100, "quadratic" ]
+
+	puts cmd
+   	Thread.new(){
+		if(rand(2) < 1) then # thread it and jump to next sample instantly
+			Thread.new(){
+				system(cmd)
+			}
+		else
+			system(cmd)
+		end
+  	####sleep(rand(1.0))
+   	}
+
+  }
+end
+####### TODO: maybe change flanger, reverb etc for slicer/randomiser per sample? maybe...
+def play_random_clip_fx_random()
+  0.upto(8){
+	id = rand($full_sample_filelist.size)
+	# Theses variables are used by the sample playing - affected to the last line of knobs
+	$my_sample_volume = 0.2 + rand() * 0.8
+	if($my_sample_volume > $sample_volume) then
+		$my_sample_volume = $sample_volume
+	end
+
+	$my_sample_speed = 0.1 + rand(0.9)
+	$my_sample_reverse = rand(2) < 1 ? false : true
+	$my_sample_sampling_rate = 44100
+	$my_sample_start_pos = 0.0 + rand(0.0..1.0)
+	$my_sample_phaser = [ rand(2) < 1 ? false : true, 
+				0.95, 0.95, 3, 0.6, 2, "-t" ] # active gain-in gain-out delay decay speed [-s(inusoid)|-t(riangle)]
+	$my_sample_flanger = [ rand(2) < 1 ? false : true, 
+				3, 9.5, 0, 70, 2, "sin", 100, "quadratic" ] # [active, delay depth regen width speed shape phase interp]
+	$my_sample_reverb = [ rand(2) < 1 ? false : true, 
+				99, 99, 100, 100, 0, 0, ] # active, reverb, HF-damping, room-scale, stereo-depth, pre-delay, wet-gain
+
+	cmd = "play -v #{$my_sample_volume * 0.2} \"#{$full_sample_filelist[id]}\" "
+	cmd += "rate #{$my_sample_sampling_rate} "
+	cmd += "speed #{$my_sample_speed.round(2)} "
+	cmd += "#{$my_sample_reverse == true ? "reverse" : ""} "
+#=begin 
+## TODO fix trim
+	length = get_sample_length($full_sample_filelist[id])
+	puts "l: #{length}"
+	puts "sample_start_pos: #{$my_sample_start_pos}"
+	start_pos = $my_sample_start_pos.round(2) * length.round(2)
+	start_pos_HMS = Time.at(start_pos).utc.strftime("%H:%M:%S.%L")
+	cmd += "trim =#{start_pos_HMS} "
+#=end	
+	cmd += $my_sample_phaser[0] == true ? "phaser #{$my_sample_phaser[1].round(2)} #{$my_sample_phaser[2].round(2)} #{$my_sample_phaser[3].round(2)} #{$my_sample_phaser[4].round(2)} #{$my_sample_phaser[5].round(2)} #{$my_sample_phaser[6]} " : ""
+	cmd += $my_sample_flanger[0] == true ? "flanger #{$my_sample_flanger[1].round(2)} #{$my_sample_flanger[2].round(2)} #{$my_sample_flanger[3].round(2)} #{$my_sample_flanger[4].round(2)} #{$my_sample_flanger[5].round(2)} #{$my_sample_flanger[6]} #{$my_sample_flanger[7].round(2)} #{$my_sample_flanger[8]} " : ""
+	cmd += $my_sample_reverb[0] == true ? "reverb #{$my_sample_reverb[1].round(2)} #{$my_sample_reverb[2].round(2)} #{$my_sample_reverb[3].round(2)} #{$my_sample_reverb[4].round(2)} #{$my_sample_reverb[5].round(2)} #{$my_sample_reverb[6].round(2)} " : ""
+
+	cmd += " > /dev/null 2>&1" #[ false, 3, 9.5, 0, 70, 2, "sin", 100, "quadratic" ]
+
+	puts cmd
+	Thread.new(){
+		if(rand(2) < 1) then # thread it and jump to next sample instantly
+			Thread.new(){
+				system(cmd)
+			}
+		else
+			system(cmd)
+		end
+  	####sleep(rand(1.0))
+	}
+
+  }
+end
+
+def slice_random_sample()
+  #0.upto(4){
+	id = rand($full_sample_filelist.size)
+	
+	# Theses variables are used by the sample playing - affected to the last line of knobs
+	$my_sample_volume = 0.2 + rand() * 0.8
+	if($my_sample_volume > $sample_volume) then
+		$my_sample_volume = $sample_volume
+	end
+
+	$my_sample_speed = 1.0
+	$my_sample_reverse = false
+	$my_sample_sampling_rate = 44100
+	$my_sample_start_pos = rand(1.0)
+	$my_sample_phaser = [ false, 0.95, 0.95, 3, 0.6, 2, "-t" ] # active gain-in gain-out delay decay speed [-s(inusoid)|-t(riangle)]
+	$my_sample_flanger = [ false, 3, 9.5, 0, 70, 2, "sin", 100, "quadratic" ] # [active, delay depth regen width speed shape phase interp]
+	$my_sample_reverb = [ false, 99, 99, 100, 100, 0, 0, ] # active, reverb, HF-damping, room-scale, stereo-depth, pre-delay, wet-gain
+
+	cmd = "play -v #{$my_sample_volume * 0.2} \"#{$full_sample_filelist[id]}\" "
+	cmd += "rate #{$my_sample_sampling_rate} "
+	cmd += "speed #{$my_sample_speed} "
+	cmd += "#{$my_sample_reverse == true ? "reverse" : ""} "
+#	cmd += "trim =0.0 "
+#=begin
+	length = get_sample_length($full_sample_filelist[id])
+	puts "l: #{length}"
+	puts "sample_start_pos: #{$my_sample_start_pos}"
+	start_pos = $my_sample_start_pos.round(2) * length.round(2)
+	start_pos_HMS = Time.at(start_pos).utc.strftime("%H:%M:%S.%L")
+	end_pos = $my_sample_start_pos.round(2) * length.round(2) + 1.0
+	end_pos_HMS = Time.at(end_pos.to_i).utc.strftime("%H:%M:%S.%L")
+#=end
+	t1 = rand().round(2)
+	cmd += "trim #{t1} #{(t1 + 0.05 + rand()).round(2)}  "#{start_pos_HMS} #{end_pos_HMS}"
+
+	cmd += $my_sample_phaser[0] == true ? "phaser #{$my_sample_phaser[1].round(2)} #{$my_sample_phaser[2].round(2)} #{$my_sample_phaser[3].round(2)} #{$my_sample_phaser[4].round(2)} #{$my_sample_phaser[5].round(2)} #{$my_sample_phaser[6]} " : ""
+	cmd += $my_sample_flanger[0] == true ? "flanger #{$my_sample_flanger[1].round(2)} #{$my_sample_flanger[2].round(2)} #{$my_sample_flanger[3].round(2)} #{$my_sample_flanger[4].round(2)} #{$my_sample_flanger[5].round(2)} #{$my_sample_flanger[6]} #{$my_sample_flanger[7].round(2)} #{$my_sample_flanger[8]} " : ""
+	cmd += $my_sample_reverb[0] == true ? "reverb #{$my_sample_reverb[1].round(2)} #{$my_sample_reverb[2].round(2)} #{$my_sample_reverb[3].round(2)} #{$my_sample_reverb[4].round(2)} #{$my_sample_reverb[5].round(2)} #{$my_sample_reverb[6].round(2)} " : ""
+	
+	cmd += " > /dev/null 2>&1" #[ false, 3, 9.5, 0, 70, 2, "sin", 100, "quadratic" ]
+	
+	puts cmd
+	Thread.new(){
+		0.upto(20){
+	  		Thread.new(){
+				system(cmd)
+			}
+			sleep(0.02)
+		}
+	####sleep(rand(1.0))
+	}
+  	
+  #}
+end
+
+def slice_random_sample_random_speed()
+  #0.upto(4){
+	id = rand($full_sample_filelist.size)
+	
+	# Theses variables are used by the sample playing - affected to the last line of knobs
+	$my_sample_volume = 0.2 + rand() * 0.8
+	if($my_sample_volume > $sample_volume) then
+		$my_sample_volume = $sample_volume
+	end	
+	
+	$my_sample_speed = 1.0
+	$my_sample_reverse = false
+	$my_sample_sampling_rate = 44100
+	$my_sample_start_pos = rand(1.0)
+	$my_sample_phaser = [ false, 0.95, 0.95, 3, 0.6, 2, "-t" ] # active gain-in gain-out delay decay speed [-s(inusoid)|-t(riangle)]
+	$my_sample_flanger = [ false, 3, 9.5, 0, 70, 2, "sin", 100, "quadratic" ] # [active, delay depth regen width speed shape phase interp]
+	$my_sample_reverb = [ false, 99, 99, 100, 100, 0, 0, ] # active, reverb, HF-damping, room-scale, stereo-depth, pre-delay, wet-gain
+
+	cmd = "play -v #{$my_sample_volume * 0.2} \"#{$full_sample_filelist[id]}\" "
+	cmd += "rate #{$my_sample_sampling_rate} "
+	cmd += "speed #{$my_sample_speed} "
+	cmd += "#{$my_sample_reverse == true ? "reverse" : ""} "
+#	cmd += "trim =0.0 "
+=begin
+	length = get_sample_length($full_sample_filelist[id])
+	puts "l: #{length}"
+	puts "sample_start_pos: #{$my_sample_start_pos}"
+	start_pos = $my_sample_start_pos.round(2) * length.round(2)
+	start_pos_HMS = Time.at(start_pos).utc.strftime("%H:%M:%S.%L")
+	end_pos = $my_sample_start_pos.round(2) * length.round(2) + 1.0
+	end_pos_HMS = Time.at(end_pos.to_i).utc.strftime("%H:%M:%S.%L")
+=end
+	t1 = rand().round(2)
+	cmd += "trim #{t1} #{(t1 + 0.05 + rand()).round(2)}  "#{start_pos_HMS} #{end_pos_HMS}"
+
+	cmd += $my_sample_phaser[0] == true ? "phaser #{$my_sample_phaser[1].round(2)} #{$my_sample_phaser[2].round(2)} #{$my_sample_phaser[3].round(2)} #{$my_sample_phaser[4].round(2)} #{$my_sample_phaser[5].round(2)} #{$my_sample_phaser[6]} " : ""
+	cmd += $my_sample_flanger[0] == true ? "flanger #{$my_sample_flanger[1].round(2)} #{$my_sample_flanger[2].round(2)} #{$my_sample_flanger[3].round(2)} #{$my_sample_flanger[4].round(2)} #{$my_sample_flanger[5].round(2)} #{$my_sample_flanger[6]} #{$my_sample_flanger[7].round(2)} #{$my_sample_flanger[8]} " : ""
+	cmd += $my_sample_reverb[0] == true ? "reverb #{$my_sample_reverb[1].round(2)} #{$my_sample_reverb[2].round(2)} #{$my_sample_reverb[3].round(2)} #{$my_sample_reverb[4].round(2)} #{$my_sample_reverb[5].round(2)} #{$my_sample_reverb[6].round(2)} " : ""
+
+	cmd += " > /dev/null 2>&1" #[ false, 3, 9.5, 0, 70, 2, "sin", 100, "quadratic" ]
+
+	puts cmd
+	Thread.new(){
+		0.upto(10){
+		  	Thread.new(){
+				system(cmd)
+				}
+			sleep(rand())
+		}
+  	####sleep(rand(1.0))
+  	}
+  #}
+end
+
+# play random sample loop and slicer
+###################################################<<<<
+
+
 
 # ------------------------------------------------------------------------
 def mode_Samples(midi_input = [ "0", 0, 0 ])
 		# button to change samples bank to the left
 		if (midi_input[1] == 26) then
-			$meme_sample_ID_offset = ($meme_sample_ID_offset + 12) % $meme_samples_filelist.size
+			$meme_sample_ID_offset = ($meme_sample_ID_offset + 8) % $meme_samples_filelist.size
 			puts "SAMPLES BANK: #{$meme_sample_ID_offset}"
 			puts "- BANK SWITCH --------------------------------------------------->>>>"
-			0.upto(9){ |i|
+			0.upto(7){ |i|
 				puts "#{$meme_samples_filelist[$meme_sample_ID_offset + i]}"
 			}
 			puts "- BANK SWITCH ---------------------------------------------------<<<<"
 		end
 		# button to change samples bank to the right
 		if (midi_input[1] == 25) then
-			$meme_sample_ID_offset = ($meme_sample_ID_offset - 12) % $meme_samples_filelist.size
+			$meme_sample_ID_offset = ($meme_sample_ID_offset - 8) % $meme_samples_filelist.size
 			puts "SAMPLES BANK: #{$meme_sample_ID_offset}"
 			puts "- BANK SWITCH --------------------------------------------------->>>>"
-			0.upto(9){ |i|
+			0.upto(7){ |i|
 				puts "#{$meme_samples_filelist[$meme_sample_ID_offset + i]}"
 			}
 			puts "- BANK SWITCH ---------------------------------------------------<<<<"
 		end
 		# line 1 and 2 buttons plays samples - plays samples
-	  	if (midi_input[1] < 16) then #
+	  	if (midi_input[1] < 13) then #
 			id = get_linear_PAD_ID(midi_input[1])
 			sid = ($meme_sample_ID_offset + id) % $meme_samples_filelist.size
 
@@ -274,7 +502,7 @@ def mode_Samples(midi_input = [ "0", 0, 0 ])
 			puts "l: #{length}"
 			puts "sample_start_pos: #{$sample_start_pos}"
 			start_pos = $sample_start_pos * length
-			start_pos_HMS = Time.at(start_pos.to_i).utc.strftime("%H:%M:%S")
+			start_pos_HMS = Time.at(start_pos).utc.strftime("%H:%M:%S.%L")
 			puts "start_pos: #{start_pos}"
 			puts "start_pos_HMS: #{start_pos_HMS}"
 			# Get play position <<<<
@@ -301,28 +529,28 @@ def mode_Samples(midi_input = [ "0", 0, 0 ])
 				system(cmd)
 			}
 		end
-=begin
+
 		# 
-		if (midi_input[1] == 16) then
+		if (midi_input[1] == 13) then
 			play_random_clip()
 			puts "play_random_clip()"
 		end
 		# 
-		if (midi_input[1] == 18) then
+		if (midi_input[1] == 15) then
 			play_random_clip_fx_random()
 			puts "play_random_clip_fx_random()"
 		end
 		# 
-		if (midi_input[1] == 19) then
+		if (midi_input[1] == 16) then
 			slice_random_sample()
 			puts "slice_random_sample()"
 		end
 		# 
-		if (midi_input[1] == 21) then
+		if (midi_input[1] == 18) then
 			slice_random_sample_random_speed()
 			puts "slice_random_sample_random_speed()"
 		end
-=end
+=begin
 		# last button before 'solo', line 1 -
 		if (midi_input[1] == 22) then
 			$sample_reverse = !$sample_reverse
@@ -336,10 +564,83 @@ def mode_Samples(midi_input = [ "0", 0, 0 ])
 				system(cmd)
 			}
 		end
+=end
 end
 def mode_Drumkits(midi_input = [ "0", 0, 0 ])
 end
-def mode_Pads(midi_input = [ "0", 0, 0 ])
+def mode_SynthPads(midi_input = [ "0", 0, 0 ])
+		# button to change samples bank to the left
+		if (midi_input[1] == 26) then
+			$synthpads_current = ($synthpads_current + 1) % $synthpads_samples_filelist.size
+			puts "- BANK SWITCH --------------------------------------------------->>>>"
+			puts "Synthpads_current: #{$synthpads_samples_filelist[$synthpads_current]}"
+			puts "- BANK SWITCH ---------------------------------------------------<<<<"
+		end
+		# button to change samples bank to the right
+		if (midi_input[1] == 25) then
+			$synthpads_current = ($synthpads_current - 1) % $synthpads_samples_filelist.size
+			puts "- BANK SWITCH --------------------------------------------------->>>>"
+			puts "Synthpads_current: #{$synthpads_samples_filelist[$synthpads_current]}"
+			puts "- BANK SWITCH ---------------------------------------------------<<<<"
+		end
+		# line 1 and 2 buttons plays samples - plays samples
+	  	if (midi_input[1] < 13) then #
+			id = get_linear_PAD_ID(midi_input[1])
+			# Get play position infos relative to this sample for "trim" >>>>
+			length = get_sample_length($synthpads_samples_filelist[$synthpads_current])
+			puts "l: #{length}"
+			puts "sample_start_pos: #{$sample_start_pos}"
+			start_pos = $sample_start_pos * length
+			start_pos_HMS = Time.at(start_pos).utc.strftime("%H:%M:%S.%L")
+			puts "start_pos: #{start_pos}"
+			puts "start_pos_HMS: #{start_pos_HMS}"
+			# Get play position <<<<
+			
+			
+			cmd = "play -v #{$sample_volume} \"#{$synthpads_samples_filelist[$synthpads_current]}\" "
+			cmd += "rate #{$sample_sampling_rate} "
+			cmd += "speed #{$sample_speed} "
+			pitch = $sample_pitch + id * $synthpads_steps
+			cmd += "pitch #{pitch} "
+			cmd += "tempo #{$sample_tempo} "
+			cmd += "#{$sample_reverse == true ? "reverse" : ""} "
+			cmd += "trim =#{start_pos_HMS} "
+			
+			cmd += $sample_phaser[0] == true ? "phaser #{$sample_phaser[1].round(2)} #{$sample_phaser[2].round(2)} #{$sample_phaser[3].round(2)} #{$sample_phaser[4].round(2)} #{$sample_phaser[5].round(2)} #{$sample_phaser[6]} " : ""
+			cmd += $sample_flanger[0] == true ? "flanger #{$sample_flanger[1].round(2)} #{$sample_flanger[2].round(2)} #{$sample_flanger[3].round(2)} #{$sample_flanger[4].round(2)} #{$sample_flanger[5].round(2)} #{$sample_flanger[6]} #{$sample_flanger[7].round(2)} #{$sample_flanger[8]} " : ""
+			cmd += $sample_reverb[0] == true ? "reverb #{$sample_reverb[1].round(2)} #{$sample_reverb[2].round(2)} #{$sample_reverb[3].round(2)} #{$sample_reverb[4].round(2)} #{$sample_reverb[5].round(2)} #{$sample_reverb[6].round(2)} " : ""
+			cmd += $sample_overdrive[0] == true ? "overdrive #{$sample_overdrive[1].round(2)} #{$sample_overdrive[2].round(2)} " : ""
+			
+						
+			cmd += " > /dev/null 2>&1" #[ false, 3, 9.5, 0, 70, 2, "sin", 100, "quadratic" ]
+
+			puts cmd
+			t = Thread.new(){
+				system(cmd)
+			}
+		end
+
+		# 
+		if (midi_input[1] == 13) then
+			$synthpads_steps -= 10
+			puts "Decrease $synthpads_step = #{$synthpads_steps}"
+		end
+		# 
+		if (midi_input[1] == 15) then
+			$synthpads_steps += 10
+			puts "Increase $synthpads_step = #{$synthpads_steps}"
+		end
+		# 
+		if (midi_input[1] == 16) then
+			$synthpads_current = ($synthpads_current - 50) % $synthpads_samples_filelist.size
+			puts "$synthpads_current - 50 = #{$synthpads_samples_filelist[$synthpads_current]}"
+		end
+		# 
+		if (midi_input[1] == 18) then
+			$synthpads_current = ($synthpads_current + 50) % $synthpads_samples_filelist.size
+			puts "$synthpads_current + 50 = #{$synthpads_samples_filelist[$synthpads_current]}"
+		end
+
 end
 def mode_8Bits(midi_input = [ "0", 0, 0 ])
 end
@@ -396,12 +697,26 @@ def handle_input(midi_input = [ "0", 0, 0 ]) # midi_input = [ midi_name(string),
 
 		case $mode
 			when "Samples";  mode_Samples(midi_input)
-		  	when "Drumkits"; mode_Drumkits(midi_input)
-		       	when "Pads";     mode_Pads(midi_input)
+		       	when "SynthPads";     mode_SynthPads(midi_input)
+		       	when "Drumkits"; mode_Drumkits(midi_input)
 		       	when "8Bits";    mode_8Bits(midi_input)
 		        when "MP3";      mode_MP3(midi_input)
 		       	when "Radio";    mode_Radio(midi_input)
 		       	when "Acid";     mode_Acid(midi_input)
+		end
+		
+		# last button before 'solo', line 1 -
+		if (midi_input[1] == 22) then
+			$sample_reverse = !$sample_reverse
+			puts "REVERSE: #{$sample_reverse}"
+		end
+		# last button before 'solo', line 2 - stops all sample plays instantly
+		if (midi_input[1] == 24) then
+			cmd = "pkill -9 play > /dev/null 2>&1"
+			puts cmd
+			t = Thread.new(){
+				system(cmd)
+			}
 		end
 
 	end
@@ -482,7 +797,7 @@ def handle_input(midi_input = [ "0", 0, 0 ]) # midi_input = [ midi_name(string),
 	if(midi_input[0].include? "Control") then
 
   		case midi_input[1]
-			when 19;	$sample_phaser[3] = midi_input[2] / 128.0 * 6 # delay
+			when 19;	$sample_phaser[3] = midi_input[2] / 128.0 * 5
 					$sample_phaser[0] = midi_input[2] == 0.0 ? false : true
 			when 23;	$sample_phaser[5] = midi_input[2] / 128.0 * 2 # speed
 					$sample_phaser[0] = midi_input[2] == 0.0 ? false : true

@@ -1,14 +1,25 @@
+
+It would be nice to have a global detuner
+by hacking play/sox to listen on a port to
+apply effects in realtime (as opposed to defined once on start then locked)
+we need to do it in reverse, the ruby client listen on a port
+then all the play instances connect to this server and wait for input
+to modify the current samples playing.
+
+
+
+
 -------------------------------------------------------
-Samples - Slicer/randomiser
-Drumkits - Loops... (bank switch change drumkit)
-Pads - Stretch...
-Bits(oldschool noise) - Loops/random
-Mp3 player - Play speed
-Radio frequencies
-Acid (loops)
+Samples - Slicer/randomiser		: OK BUT TODO: FIX THE LAST KNOB TO SET START POSITION
+SynthPads - 				: OK
+Drumkits - Loops...			:
+Bits(oldschool noise) - Loops/random	:
+Mp3 player - Play speed			:
+Radio frequencies			:
+Acid (loops)				:
 
 TODO: Change current sample pitch etc when sample is playing
-
+	NEEDS PLAY/SOX HACK, SEE BEGINING OF THIS DOC.
 -------------------------------------------------------
 Get a drumkit samples directory,
 	generate a line of thoses samples randomly picked
@@ -18,17 +29,3 @@ Get a drumkit samples directory,
 	We can imagine a second pass to repeat/stutter part
 	of this samples line with distortions or whatever...
 	(of course it can also be other samples than drumkits)
-
-Realtime sample time stretch and FX
-	Able to apply realtime modifications to samples
-	instead of what we have now, we can set effect parameters
-	using knobx then play a sample, instead we should slow
-	or speed up sample play for ex in realtime while it is played
-	and for that we most likely need a C/C++ player including FXs,
-	that we can connect to in TCP mode for example to
-	redefine sample play parameters on the fly.
-	And that's about it. Maybe we can hack the sox/play binary
-	since it open source and already support what we want,
-	but only in preprocessed way...gotta have a look.
-
-SAMPLE LOOP SLICING
