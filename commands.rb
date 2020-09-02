@@ -207,6 +207,10 @@ def init()
 	###########################################################	
 	$meme_samples_filelist = Dir[ "#{$meme_samples_dir}/*.ogg" ]
 	$meme_samples_filelist += Dir[ "#{$meme_samples_dir}/*.OGG" ]
+	$meme_samples_filelist += Dir[ "#{$meme_samples_dir}/*.mp3" ]
+	$meme_samples_filelist += Dir[ "#{$meme_samples_dir}/*.MP3" ]
+	$meme_samples_filelist += Dir[ "#{$meme_samples_dir}/*.wav" ]
+	$meme_samples_filelist += Dir[ "#{$meme_samples_dir}/*.WAV" ]
 	$meme_samples_filelist.sort!
 #	puts $meme_samples_filelist.inspect
 #	0.upto(13){ |i| puts "#{$meme_samples_filelist[i]}" }
@@ -255,6 +259,13 @@ def init()
 	$synthpads_current = 0 # current sample
 	$synthpads_steps = 50 # tone steps between buttons, like notes on a keyboard...
 	puts "Loaded #{$synthpads_samples_filelist.size} samples (SynthPads)."
+
+	$drumkits_samples_filelist = File.open("Samples_drumkits.txt").readlines
+	0.upto($drumkits_samples_filelist.size - 1){|i| $drumkits_samples_filelist[i] = $drumkits_samples_filelist[i].chomp }
+	$drumkits_current = 0 # current sample
+	$drumkits_steps = 50 # tone steps between buttons, like notes on a keyboard...
+	puts "Loaded #{$drumkits_samples_filelist.size} samples (Drumkits)."
+
 
 	puts "init().ok."
 end
@@ -566,8 +577,7 @@ def mode_Samples(midi_input = [ "0", 0, 0 ])
 		end
 =end
 end
-def mode_Drumkits(midi_input = [ "0", 0, 0 ])
-end
+
 def mode_SynthPads(midi_input = [ "0", 0, 0 ])
 		# button to change samples bank to the left
 		if (midi_input[1] == 26) then
@@ -641,6 +651,79 @@ def mode_SynthPads(midi_input = [ "0", 0, 0 ])
 			puts "$synthpads_current + 50 = #{$synthpads_samples_filelist[$synthpads_current]}"
 		end
 
+end
+def mode_Drumkits(midi_input = [ "0", 0, 0 ])
+		# button to change samples bank to the left
+		if (midi_input[1] == 26) then
+			$drumkits_current = ($drumkits_current + 1) % $drumkits_samples_filelist.size
+			puts "- BANK SWITCH --------------------------------------------------->>>>"
+			puts "Drumkits_current: #{$drumkits_samples_filelist[$drumkits_current]}"
+			puts "- BANK SWITCH ---------------------------------------------------<<<<"
+		end
+		# button to change samples bank to the right
+		if (midi_input[1] == 25) then
+			$drumkits_current = ($drumkits_current - 1) % $drumkits_samples_filelist.size
+			puts "- BANK SWITCH --------------------------------------------------->>>>"
+			puts "Drumkitss_current: #{$drumkits_samples_filelist[$drumkits_current]}"
+			puts "- BANK SWITCH ---------------------------------------------------<<<<"
+		end
+		# line 1 and 2 buttons plays samples - plays samples
+	  	if (midi_input[1] < 13) then #
+			id = get_linear_PAD_ID(midi_input[1])
+			# Get play position infos relative to this sample for "trim" >>>>
+			length = get_sample_length($drumkits_samples_filelist[$drumkits_current])
+			puts "l: #{length}"
+			puts "sample_start_pos: #{$sample_start_pos}"
+			start_pos = $sample_start_pos * length
+			start_pos_HMS = Time.at(start_pos).utc.strftime("%H:%M:%S.%L")
+			puts "start_pos: #{start_pos}"
+			puts "start_pos_HMS: #{start_pos_HMS}"
+			# Get play position <<<<
+			
+			
+			cmd = "play -v #{$sample_volume} \"#{$drumkits_samples_filelist[$drumkits_current]}\" "
+			cmd += "rate #{$sample_sampling_rate} "
+			cmd += "speed #{$sample_speed} "
+			pitch = $sample_pitch + id * $drumkits_steps
+			cmd += "pitch #{pitch} "
+			cmd += "tempo #{$sample_tempo} "
+			cmd += "#{$sample_reverse == true ? "reverse" : ""} "
+			cmd += "trim =#{start_pos_HMS} "
+			
+			cmd += $sample_phaser[0] == true ? "phaser #{$sample_phaser[1].round(2)} #{$sample_phaser[2].round(2)} #{$sample_phaser[3].round(2)} #{$sample_phaser[4].round(2)} #{$sample_phaser[5].round(2)} #{$sample_phaser[6]} " : ""
+			cmd += $sample_flanger[0] == true ? "flanger #{$sample_flanger[1].round(2)} #{$sample_flanger[2].round(2)} #{$sample_flanger[3].round(2)} #{$sample_flanger[4].round(2)} #{$sample_flanger[5].round(2)} #{$sample_flanger[6]} #{$sample_flanger[7].round(2)} #{$sample_flanger[8]} " : ""
+			cmd += $sample_reverb[0] == true ? "reverb #{$sample_reverb[1].round(2)} #{$sample_reverb[2].round(2)} #{$sample_reverb[3].round(2)} #{$sample_reverb[4].round(2)} #{$sample_reverb[5].round(2)} #{$sample_reverb[6].round(2)} " : ""
+			cmd += $sample_overdrive[0] == true ? "overdrive #{$sample_overdrive[1].round(2)} #{$sample_overdrive[2].round(2)} " : ""
+			
+						
+			cmd += " > /dev/null 2>&1" #[ false, 3, 9.5, 0, 70, 2, "sin", 100, "quadratic" ]
+
+			puts cmd
+			t = Thread.new(){
+				system(cmd)
+			}
+		end
+
+		# 
+		if (midi_input[1] == 13) then
+			$drumkits_steps -= 10
+			puts "Decrease $drumkits_step = #{$drumkits_steps}"
+		end
+		# 
+		if (midi_input[1] == 15) then
+			$drumkits_steps += 10
+			puts "Increase $drumkits_step = #{$drumkits_steps}"
+		end
+		# 
+		if (midi_input[1] == 16) then
+			$drumkits_current = ($drumkits_current - 50) % $drumkits_samples_filelist.size
+			puts "$drumkits_current - 50 = #{$drumkits_samples_filelist[$drumkits_current]}"
+		end
+		# 
+		if (midi_input[1] == 18) then
+			$drumkits_current = ($drumkits_current + 50) % $drumkits_samples_filelist.size
+			puts "$drumkits_current + 50 = #{$drumkits_samples_filelist[$drumkits_current]}"
+		end
 end
 def mode_8Bits(midi_input = [ "0", 0, 0 ])
 end
